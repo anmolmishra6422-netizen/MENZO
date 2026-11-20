@@ -1,0 +1,122 @@
+/**
+ * MENZO Security Rules Verification Test Suite (Phase 0 TDD Spec)
+ * Documents and verifies the "Dirty Dozen" adversarial payloads against firestore.rules.
+ * Run with @firebase/rules-unit-testing when a Firestore Emulator is available.
+ */
+
+export const DIRTY_DOZEN_TEST_CASES = [
+  {
+    id: 'DD-01',
+    name: 'Self-Privilege Escalation on users/{uid}',
+    collection: 'users/cust1',
+    operation: 'create',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: {
+      uid: 'cust1',
+      email: 'cust1@example.com',
+      displayName: 'Mallory',
+      disabled: false,
+      role: 'admin', // ghost field
+      isAdmin: true, // ghost field
+    },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-02',
+    name: 'Admin Registry Poisoning on adminUsers/{uid}',
+    collection: 'adminUsers/cust1',
+    operation: 'create',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: { uid: 'cust1', email: 'cust1@example.com', role: 'super_admin' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-03',
+    name: 'Unverified Email Spoofing Admin Write',
+    collection: 'products/mz-spoof',
+    operation: 'create',
+    auth: { uid: 'spoof1', email: 'anmolmishra6422@gmail.com', email_verified: false },
+    payload: { id: 'mz-spoof', name: 'Spoof Tee', price: 1 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-04',
+    name: 'Cross-Customer PII Read on users/{otherUid}',
+    collection: 'users/cust2',
+    operation: 'get',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-05',
+    name: 'Cross-Customer Cart Tampering',
+    collection: 'carts/cust2',
+    operation: 'update',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: { uid: 'cust2', items: [] },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-06',
+    name: 'Order Identity Spoofing',
+    collection: 'orders/ord-spoof',
+    operation: 'create',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: { id: 'ord-spoof', uid: 'cust2', status: 'Order Placed' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-07',
+    name: 'Order State Shortcutting to Delivered/Paid',
+    collection: 'orders/ord-shortcut',
+    operation: 'create',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: { id: 'ord-shortcut', uid: 'cust1', status: 'Delivered', paymentStatus: 'Paid' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-08',
+    name: 'Terminal State Bypass (Cancelling Delivered Order)',
+    collection: 'orders/ord-delivered',
+    operation: 'update',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    existingData: { uid: 'cust1', status: 'Delivered' },
+    payload: { status: 'Cancelled' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-09',
+    name: 'Catalog Price Tampering by Customer',
+    collection: 'products/mz-top-001',
+    operation: 'update',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: { price: 1 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-10',
+    name: 'Demo Review Spoofing & Out-of-Range Rating',
+    collection: 'reviews/rev-bad',
+    operation: 'create',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    payload: { id: 'rev-bad', productId: 'mz-top-001', uid: 'cust1', rating: 99, isDemo: true },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-11',
+    name: 'ID Poisoning (>128 chars or invalid chars)',
+    collection: `orders/${'a'.repeat(200)}`,
+    operation: 'create',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    id: 'DD-12',
+    name: 'Blanket Orders List Scraping Without Owner Filter',
+    collection: 'orders',
+    operation: 'list',
+    auth: { uid: 'cust1', email: 'cust1@example.com', email_verified: true },
+    query: 'collection(db, "orders") // no where("uid", "==", cust1)',
+    expected: 'PERMISSION_DENIED',
+  },
+];

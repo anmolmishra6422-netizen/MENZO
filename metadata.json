@@ -1,0 +1,6 @@
+{
+  "name": "MENZO – Men's Fashion Store",
+  "description": "Style That Defines You. Modern Indian men's fashion e-commerce platform featuring curated topwear, bottomwear, ethnic wear, activewear, footwear, and accessories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
